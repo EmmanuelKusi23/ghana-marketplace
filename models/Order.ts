@@ -1,16 +1,45 @@
 import mongoose, { Schema, Model } from 'mongoose';
-import { PaymentMethod } from '@/types';
+import { PaymentMethod, OrderStatus } from '@/types';
 
 export interface IOrder {
   _id: string;
   listingId: Schema.Types.ObjectId;
   buyerId: Schema.Types.ObjectId;
   sellerId: Schema.Types.ObjectId;
-  amount: number;
+  courierId?: Schema.Types.ObjectId;
+
+  // Pricing
+  itemPrice: number;
+  deliveryFee: number;
+  platformCommission: number;
+  totalAmount: number;
+
+  // Payment & Escrow
   paymentMethod: PaymentMethod;
-  deliveryMethod: 'pickup' | 'delivery';
-  deliveryAddress?: string;
-  status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
+  escrowStatus: 'held' | 'released' | 'refunded';
+  escrowAmount: number;
+
+  // Delivery
+  deliveryAddress: string;
+  pickupAddress: string;
+
+  // Verification Codes
+  pickupCode: string;
+  deliveryCode: string;
+
+  // Status & Timeline
+  status: OrderStatus;
+  statusHistory: Array<{
+    status: OrderStatus;
+    timestamp: Date;
+    updatedBy: string;
+    notes?: string;
+  }>;
+
+  // Auto-confirmation
+  deliveryConfirmationDeadline?: Date;
+  autoConfirmed: boolean;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -32,34 +61,101 @@ const OrderSchema = new Schema<IOrder>(
       ref: 'User',
       required: true,
     },
-    amount: {
+    courierId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+    },
+
+    // Pricing
+    itemPrice: {
       type: Number,
       required: true,
       min: 0,
     },
+    deliveryFee: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+    platformCommission: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+    totalAmount: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+
+    // Payment & Escrow
     paymentMethod: {
       type: String,
-      enum: [
-        'mtn-momo',
-        'vodafone-cash',
-        'airteltigo-money',
-        'cash-on-delivery',
-        'bank-transfer',
-      ] as PaymentMethod[],
+      enum: ['mtn-momo', 'vodafone-cash', 'airteltigo-money', 'cash-on-delivery', 'bank-transfer'] as PaymentMethod[],
       required: true,
     },
-    deliveryMethod: {
+    escrowStatus: {
       type: String,
-      enum: ['pickup', 'delivery'],
-      required: true,
+      enum: ['held', 'released', 'refunded'],
+      default: 'held',
     },
+    escrowAmount: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+
+    // Delivery
     deliveryAddress: {
       type: String,
+      required: true,
     },
+    pickupAddress: {
+      type: String,
+      required: true,
+    },
+
+    // Verification Codes
+    pickupCode: {
+      type: String,
+      required: true,
+    },
+    deliveryCode: {
+      type: String,
+      required: true,
+    },
+
+    // Status & Timeline
     status: {
       type: String,
-      enum: ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'],
+      enum: ['pending', 'paid', 'courier-assigned', 'picked-up', 'in-transit', 'delivered', 'completed', 'disputed', 'refunded', 'cancelled'] as OrderStatus[],
       default: 'pending',
+    },
+    statusHistory: [
+      {
+        status: {
+          type: String,
+          required: true,
+        },
+        timestamp: {
+          type: Date,
+          default: Date.now,
+        },
+        updatedBy: {
+          type: String,
+          required: true,
+        },
+        notes: String,
+      },
+    ],
+
+    // Auto-confirmation
+    deliveryConfirmationDeadline: {
+      type: Date,
+    },
+    autoConfirmed: {
+      type: Boolean,
+      default: false,
     },
   },
   {

@@ -7,8 +7,23 @@ export interface User {
   location: string;
   profileImage?: string;
   joinDate: Date;
-  role: 'buyer' | 'seller' | 'admin';
+  role: 'buyer' | 'seller' | 'admin' | 'courier';
   verified: boolean;
+  rating?: number;
+  totalRatings?: number;
+  strikes?: number;
+  banned?: boolean;
+}
+
+// Courier Types
+export interface Courier extends User {
+  role: 'courier';
+  vehicleType?: string;
+  licenseNumber?: string;
+  activeDeliveries: number;
+  completedDeliveries: number;
+  courierRating: number;
+  availabilityStatus: 'available' | 'busy' | 'offline';
 }
 
 // Listing Types
@@ -97,7 +112,19 @@ export interface Payment {
   timestamp: Date;
 }
 
-// Order Types
+// Order Types with Escrow
+export type OrderStatus =
+  | 'pending'           // Order placed, awaiting payment
+  | 'paid'              // Payment in escrow
+  | 'courier-assigned'  // Courier assigned
+  | 'picked-up'         // Item picked up from seller
+  | 'in-transit'        // Out for delivery
+  | 'delivered'         // Delivered to buyer
+  | 'completed'         // Confirmed by buyer/auto-confirmed
+  | 'disputed'          // Under dispute
+  | 'refunded'          // Refunded to buyer
+  | 'cancelled';        // Cancelled
+
 export interface Order {
   id: string;
   listingId: string;
@@ -106,13 +133,138 @@ export interface Order {
   buyer?: User;
   sellerId: string;
   seller?: User;
-  amount: number;
+  courierId?: string;
+  courier?: Courier;
+
+  // Pricing
+  itemPrice: number;
+  deliveryFee: number;
+  platformCommission: number;
+  totalAmount: number;
+
+  // Payment & Escrow
   paymentMethod: PaymentMethod;
-  deliveryMethod: 'pickup' | 'delivery';
-  deliveryAddress?: string;
-  status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
+  escrowStatus: 'held' | 'released' | 'refunded';
+  escrowAmount: number;
+
+  // Delivery
+  deliveryAddress: string;
+  pickupAddress: string;
+
+  // Verification Codes
+  pickupCode: string;
+  deliveryCode: string;
+
+  // Status & Timeline
+  status: OrderStatus;
+  statusHistory: StatusUpdate[];
+
+  // Auto-confirmation
+  deliveryConfirmationDeadline?: Date;
+  autoConfirmed: boolean;
+
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface StatusUpdate {
+  status: OrderStatus;
+  timestamp: Date;
+  updatedBy: string;
+  notes?: string;
+}
+
+// Verification Types
+export interface VerificationProof {
+  id: string;
+  orderId: string;
+  type: 'pickup' | 'delivery';
+  photos: string[];
+  gpsCoordinates: GPSCoordinates;
+  timestamp: Date;
+  verifiedBy: string;
+  code: string;
+  confirmed: boolean;
+}
+
+export interface GPSCoordinates {
+  latitude: number;
+  longitude: number;
+  accuracy?: number;
+}
+
+// Dispute Types
+export type DisputeStatus = 'open' | 'under-review' | 'resolved-refund' | 'resolved-release' | 'resolved-partial';
+
+export interface Dispute {
+  id: string;
+  orderId: string;
+  order?: Order;
+  raisedBy: string;
+  raiser?: User;
+  reason: string;
+  description: string;
+  evidencePhotos: string[];
+  status: DisputeStatus;
+  adminNotes?: string;
+  resolution?: DisputeResolution;
+  createdAt: Date;
+  resolvedAt?: Date;
+  resolvedBy?: string;
+}
+
+export interface DisputeResolution {
+  decision: 'refund-buyer' | 'release-seller' | 'partial-refund';
+  refundAmount?: number;
+  penaltyApplied?: Penalty;
+  notes: string;
+}
+
+export interface Penalty {
+  userId: string;
+  type: 'warning' | 'strike' | 'ban';
+  reason: string;
+  appliedAt: Date;
+}
+
+// Transaction & Payout Types
+export interface Transaction {
+  id: string;
+  orderId: string;
+  type: 'escrow-hold' | 'platform-commission' | 'courier-payment' | 'seller-payout' | 'refund';
+  amount: number;
+  fromUserId?: string;
+  toUserId?: string;
+  status: 'pending' | 'completed' | 'failed';
+  reference: string;
+  description: string;
+  createdAt: Date;
+  completedAt?: Date;
+}
+
+export interface Payout {
+  orderId: string;
+  sellerId: string;
+  courierId: string;
+  itemPrice: number;
+  deliveryFee: number;
+  platformCommission: number;
+  sellerPayout: number;
+  courierPayout: number;
+  platformEarnings: number;
+  timestamp: Date;
+}
+
+// Rating System
+export interface Rating {
+  id: string;
+  orderId: string;
+  raterId: string;
+  ratedUserId: string;
+  rating: number; // 1-5
+  review?: string;
+  type: 'buyer-to-seller' | 'seller-to-buyer' | 'buyer-to-courier' | 'seller-to-courier';
+  createdAt: Date;
 }
 
 // Filter Types

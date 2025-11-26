@@ -8,10 +8,24 @@ export interface IUser {
   phone: string;
   location: string;
   profileImage?: string;
-  role: 'buyer' | 'seller' | 'admin';
+  role: 'buyer' | 'seller' | 'admin' | 'courier';
   verified: boolean;
   favorites: Schema.Types.ObjectId[];
   joinDate: Date;
+
+  // Rating System
+  rating: number;
+  totalRatings: number;
+  strikes: number;
+  banned: boolean;
+
+  // Courier-specific fields
+  vehicleType?: string;
+  licenseNumber?: string;
+  activeDeliveries?: number;
+  completedDeliveries?: number;
+  courierRating?: number;
+  availabilityStatus?: 'available' | 'busy' | 'offline';
 }
 
 const UserSchema = new Schema<IUser>(
@@ -47,7 +61,7 @@ const UserSchema = new Schema<IUser>(
     },
     role: {
       type: String,
-      enum: ['buyer', 'seller', 'admin'],
+      enum: ['buyer', 'seller', 'admin', 'courier'],
       default: 'buyer',
     },
     verified: {
@@ -61,6 +75,53 @@ const UserSchema = new Schema<IUser>(
     joinDate: {
       type: Date,
       default: Date.now,
+    },
+
+    // Rating System
+    rating: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5,
+    },
+    totalRatings: {
+      type: Number,
+      default: 0,
+    },
+    strikes: {
+      type: Number,
+      default: 0,
+    },
+    banned: {
+      type: Boolean,
+      default: false,
+    },
+
+    // Courier-specific fields
+    vehicleType: {
+      type: String,
+    },
+    licenseNumber: {
+      type: String,
+    },
+    activeDeliveries: {
+      type: Number,
+      default: 0,
+    },
+    completedDeliveries: {
+      type: Number,
+      default: 0,
+    },
+    courierRating: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5,
+    },
+    availabilityStatus: {
+      type: String,
+      enum: ['available', 'busy', 'offline'],
+      default: 'offline',
     },
   },
   {
